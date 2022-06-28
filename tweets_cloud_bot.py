@@ -254,6 +254,19 @@ def get_params_from_tweet(tweet_text:str):
         params["border"] = True
     return params
 
+def validate_input(tweet_text:str):
+    """Validates the input
+    Args:
+        tweet_text: The text of the tweet.
+    Returns:
+        True or False based on whether the mention/tweet includes required input Make Tweets Cloud.
+        """
+    tweet_text = str(tweet_text).lower()
+    if 'make tweets cloud' in tweet_text or 'make tweet cloud' in tweet_text:
+        return True
+    else:
+        return False
+
 def bot_handler():
     """Handles the bot.
     """
@@ -271,6 +284,11 @@ def bot_handler():
                 tweet_id = mention.id
                 user_id = mention.author_id
 
+                #validate input
+                if not validate_input(mention.text):
+                    store_last_seen_tweet_id(mention.id)
+                    continue
+
                 if mention_num > 1 and user_id == users_metadata[mention_num-2].id:
                     # if the same user mentions the bot multiple times consecutively
                     # the meta data only contains one entry for the user while mentions
@@ -285,6 +303,7 @@ def bot_handler():
                 # message and move on to the next one
                 if not validate_user(user_id):
                     reply_with_limit_reached(tweet_id, screen_name)
+                    store_last_seen_tweet_id(mention.id)
                     continue
                 # Otherwise we fetch tweets and proceed with business as usual
                 tweets = fetch_tweets(user_id)
