@@ -11,45 +11,9 @@ import string
 import nltk
 import tweepy
 import configparser
-import configparser
 from collections import Counter
 import logging
 import json
-
-
-logging.basicConfig(filename="logs/tweets_cloud.log", level=logging.INFO,
-                            format='%(asctime)s - %(levelname)s - %(message)s')
-logging.info("Starting tweets_cloud.py")
-
-# Base path
-BASE_PATH = pathlib.Path.cwd()
-
-
-# Let's define our stop words here
-# If you're not familiar with stop words, they are the most commonly ccuring
-# words in texts, like the, a, and, of, etc.
-stop_words = nltk.corpus.stopwords.words('english')
-stop_words.extend(list(string.punctuation))
-
-# Let's get out twitter API up and running
-# Note that I'm importing my twitter API credentials from a config file
-# Obviously the conifg file isn't in the repo, so to make this script work
-# you'll need to provide your own credentials.
-config = configparser.ConfigParser()
-config.read("classified_configs.ini")
-config['twitter-app-data']['bearer']
-consumer_key = config['twitter-app-data']['consumer_key']
-consumer_secret = config['twitter-app-data']['consumer_secret']
-access_token = config['twitter-bot-data']['access_token']
-access_secret = config['twitter-bot-data']['access_token_secret']
-
-api_v2 = tweepy.Client(consumer_key, consumer_secret, access_token, access_secret)
-
-# We need API v1 to upload media since twitter's api v2 doesn't
-# support uploading media yet.
-auth_v1 = tweepy.OAuthHandler(consumer_key, consumer_secret,
-                                access_token, access_secret)
-api_v1 = tweepy.API(auth=auth_v1)
 
 
 def get_last_seen_tweet_id():
@@ -57,7 +21,10 @@ def get_last_seen_tweet_id():
     
     logging.info("Retrieing last seen tweet ID")
     with open("validation_data/last_seen_tweet_id.txt", "r") as f:
-        return int(f.read().strip())
+        last_seen_id = int(f.read().strip())
+        logging.info(f"last seen id: {last_seen_id}")
+        print(last_seen_id)
+        return last_seen_id
 
 def store_last_seen_tweet_id(last_seen_tweet_id:int):
     """Stores the last seen tweet id in a file.
@@ -109,11 +76,14 @@ def get_mentions():
     last_seen_tweet_id = get_last_seen_tweet_id()
     # the twitter id of the TweetsCloudBot
     bot_id = "1541369501333209094"
-    mentions = api_v2.get_users_mentions(user_id=bot_id, since_id=last_seen_tweet_id,
-                                    expansions="author_id", user_fields=["username"])
-    mentions = mentions.data
-    users_metadata = mentions.includes["users"]
-    return mentions, users_metadata
+    try:
+        mentions = api_v2.get_users_mentions(bot_id, since_id=last_seen_tweet_id, expansions="author_id", user_fields=["username"])
+        mentions_data = mentions.data
+        users_metadata = mentions.includes["users"]
+        return mentions_data, users_metadata
+    except:
+        logging.error("Couldn't retrieve mentions")
+        return [], []
 
 def fetch_tweets(user_id:str):
     """Fetches tweets from a given username.
@@ -282,13 +252,15 @@ def bot_handler():
     """Handles the bot.
     """
     while True:
+        print("in an infinite loop")
         mentions, users_metadata = get_mentions()
         if len(mentions) > 0:
+            print("Oh hey we got new mentions")
             # We reverse the mentions the reply to the early ones first
             # And we enumerate the mentions to get the index to retrieve
             # username from meta data since both lists have one to one
             # correspondence
-            for mention, mention_num in enumerate(reversed(mentions), start=1):
+            for mention_num, mention in enumerate(reversed(mentions), start=1):
                 tweet_id = mention.id
                 user_id = mention.author_id
                 # We use negative index here since we reversed the mentions list
@@ -309,4 +281,50 @@ def bot_handler():
                                         user_screen_name=screen_name, 
                                         cloud_mode= params['mode'])
                 update_validation_data(user_id)
-        time.sleep(30)
+                print("replied")
+        print("no mentions, going to sleep for 5s")
+        time.sleep(5)
+
+if __name__=="__main__":
+    print("Starting...")
+
+    logging.basicConfig(filename="logs/tweets_cloud.log", level=logging.INFO,
+                                format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info("Starting tweets_cloud.py")
+
+    # Base path
+    BASE_PATH = pathlib.Path.cwd()
+
+
+    # Let's define our stop words here
+    # If you're not familiar with stop words, they are the most commonly ccuring
+    # words in texts, like the, a, and, of, etc.
+    print("getting stop words")
+    stop_words = nltk.corpus.stopwords.words('english')
+    stop_words.extend(list(string.punctuation))
+    print("gottem")
+    # Let's get out twitter API up and running
+    # Note that I'm importing my twitter API credentials from a config file
+    # Obviously the conifg file isn't in the repo, so to make this script work
+    # you'll need to provide your own credentials.
+    print("setting up apis")
+    config = configparser.ConfigParser()
+    config.read("classified_configs.ini")
+    config['twitter-app-data']['bearer']
+    consumer_key = config['twitter-app-data']['consumer_key']
+    consumer_secret = config['twitter-app-data']['consumer_secret']
+    access_token = config['twitter-bot-data']['access_token']
+    access_secret = config['twitter-bot-data']['access_token_secret']
+    bearer_token = config["twitter-app-data"]["bearer"]
+
+    api_v2 = tweepy.Client(bearer_token, consumer_key, consumer_secret,
+                            access_token, access_secret)
+
+    # We need API v1 to upload media since twitter's api v2 doesn't
+    # support uploading media yet.
+    auth_v1 = tweepy.OAuthHandler(consumer_key, consumer_secret,
+                                    access_token, access_secret)
+    api_v1 = tweepy.API(auth=auth_v1)
+    print("gottem")
+
+    bot_handler()
