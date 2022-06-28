@@ -198,7 +198,7 @@ def reply_with_tweetcloud(tweet_id:str, user_id:str=None,
     Args:
         tweet_id: The id of the tweet to reply to.
     """
-    reply_text = f"Hi {user_screen_name}, here's your requested Tweet Cloud! ☁️"
+    reply_text = f"Hi {user_screen_name}, here's your requested Tweets Cloud! ☁️"
     tweet_cloud_img = f"tmp/tweetscloud_{cloud_mode}_{user_id}.png"
     # note the use of api_v1 to upload media since v2 doesn't support media upload
     # as of now
@@ -273,7 +273,7 @@ def bot_handler():
     while True:
         mentions, users_metadata = get_mentions()
         if len(mentions) > 0:
-            logging.log("Got new mentions")
+            logging.info("Got new mentions")
             # We reverse the mentions the reply to the early ones first
             # And we enumerate the mentions to get the index to retrieve
             # username from meta data since both lists have one to one
@@ -317,7 +317,7 @@ def bot_handler():
                 update_validation_data(user_id)
                 logging.info(f"User {username} has been replied.")
         logging.info("No mentions, going to sleep for the next 30 seconds.")
-        time.sleep(5)
+        time.sleep(30)
 
 if __name__=="__main__":
     logging.basicConfig(filename="logs/tweets_cloud.log", level=logging.INFO,
