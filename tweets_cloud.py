@@ -48,13 +48,13 @@ def validate_user(user_id:str):
     logging.info("Validating user")
     with open("validation_data/users_data.json", "r") as f:
         users_data = json.loads(f.read())
-    if user_id in users_data.keys():
+    if str(user_id) in users_data.keys():
         user_requests = users_data[str(user_id)]['requests']
     # if users record doesnt exist yet then the user has made no requests
     # hence they are valid. As for creating record we do so with update validation data method
     else:
         return True
-    if user_requests >=5:
+    if int(user_requests) >=5:
         return False
     else:
         return True
@@ -104,7 +104,7 @@ def fetch_tweets(user_id:str):
     """
     logging.info("Fetching tweets")
     # user = api_v2.get_user(username)
-    tweets = api_v2.get_users_tweets(id=user_id, max_results=10)
+    tweets = api_v2.get_users_tweets(id=user_id, max_results=100)
     tweets = tweets.data
     return tweets
 
@@ -188,7 +188,7 @@ def generate_tweets_cloud(
         text_color = "white"
     else:
         text_color = "black"
-    plt.text(630, 1150, "Generated with ❤️ by @TweetsCloudBot", fontsize=5, color=text_color)
+    plt.text(370, 1150, "Generated with ❤️ by @TweetsCloudBot", fontsize=5, color=text_color)
     plt.savefig(f"tmp/tweetscloud_{mode}_{user_id}.png", dpi=300, bbox_inches="tight")
 
 
@@ -217,10 +217,10 @@ def reply_with_limit_reached(tweet_id:str, user_screen_name:str):
 
     """
     logging.info("Replying with limit reached message")
-    reply_text = f"Hi {user_screen_name}, I'm sorry, but you've reached your daily limit of \
-                    limited to 5 requests per day." \
+    reply_text = f"Hi {user_screen_name}, Sorry, but you've reached your daily limit of "\
+                    "5 requests per day. " \
                     "Please try again tomorrow."
-    api_v2.create_tweet(tweet_id=tweet_id, text=reply_text)
+    api_v2.create_tweet(text=reply_text, in_reply_to_tweet_id=tweet_id)
     return
 
 def get_params_from_tweet(tweet_text:str):
@@ -235,32 +235,25 @@ def get_params_from_tweet(tweet_text:str):
     tweet_text = tweet_text.lower()
     params["mode"] = "default"
     mode="default"
-    if "mode" in tweet_text:
-        mode = tweet_text.split("mode")[1].split(" ")[0]
-        if mode in ["default", "sketch"]:
-            params["mode"] = mode
+    if "sketch" in tweet_text:
+        mode = "sketch"
+        params["mode"] = mode
     
-    if "background" in tweet_text:
-        background_color = tweet_text.split("background")[1].split(" ")[0]
-        if background_color in ["white", "black"]:
-            params["background_color"] = background_color
+    if "black" in tweet_text:
+        params["background_color"] = "black"
+    elif "white" in tweet_text:
+        params["background_color"] = "white"
     else:
         if mode=="default":
             params["background_color"] = "black"
         elif mode=="sketch":
             params["background_color"] = "white"
 
-    if "border" in tweet_text:
-        border = tweet_text.split("border")[1].split(" ")[0]
-        if border == "none":
+    if "no border" in tweet_text:
             params["border"] = False
-        else:
-            params["border"] = True
     else:
         params["border"] = True
     return params
-# btw about 95% of the above function including logic was written by Github Copilot
-
 
 def bot_handler():
     """Handles the bot.
@@ -306,7 +299,7 @@ def bot_handler():
                                         cloud_mode= params['mode'])
                 update_validation_data(user_id)
                 print("replied")
-        print("no mentions, going to sleep for 5s")
+        print("no mentions, going to sleep for 30s")
         time.sleep(5)
 
 if __name__=="__main__":
