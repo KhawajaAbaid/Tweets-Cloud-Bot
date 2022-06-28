@@ -90,6 +90,20 @@ def validate_user(user_id:str):
     else:
         return True
 
+def update_validation_data(user_id:str):
+    """Updates the validation data.
+    Args:
+        user_id: The id of the user to update.
+    """
+    logging.info("Updating validation data")
+    with open("validation_data/users_data.json", "r") as f:
+        users_data = json.loads(f.read())
+    users_data[str(user_id)]['requests'] += 1
+    with open("validation_data/users_data.json", "w") as f:
+        f.write(json.dumps(users_data))
+    return
+# this func above was written by Github Copilot. Good bot!
+
 def get_mentions():
     """Gets the mentions of the bot.
     Returns:
@@ -298,4 +312,5 @@ def bot_handler():
                 reply_with_tweetcloud(tweet_id, user_id, 
                                         user_screen_name=screen_name, 
                                         cloud_mode= params['mode'])
+                update_validation_data(user_id)
         time.sleep(30)
