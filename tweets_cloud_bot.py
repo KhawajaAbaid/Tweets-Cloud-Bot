@@ -192,13 +192,14 @@ def generate_tweets_cloud(
 
 
 def reply_with_tweetcloud(tweet_id:str, user_id:str=None,
-                            user_screen_name:str="Human",
+                            user_screen_name:str="Elon Musk",
+                            username:str="@ElonMusk",
                             cloud_mode:str="default"):
     """Replies to a tweet.
     Args:
         tweet_id: The id of the tweet to reply to.
     """
-    reply_text = f"Hi {user_screen_name}, here's your requested Tweets Cloud! ☁️"
+    reply_text = f"Hi {username}, here's your requested Tweets Cloud! ☁️"
     tweet_cloud_img = f"tmp/tweetscloud_{cloud_mode}_{user_id}.png"
     # note the use of api_v1 to upload media since v2 doesn't support media upload
     # as of now
@@ -216,7 +217,7 @@ def reply_with_limit_reached(tweet_id:str, user_screen_name:str):
 
     """
     logging.info("Replying with limit reached message")
-    reply_text = f"Hi {user_screen_name}, Sorry, but you've reached your daily limit of "\
+    reply_text = f"Hi @{user_screen_name}, Sorry, but you've reached your daily limit of "\
                     "5 requests per day. " \
                     "Please try again tomorrow."
     api_v2.create_tweet(text=reply_text, in_reply_to_tweet_id=tweet_id)
@@ -312,7 +313,8 @@ def bot_handler():
                 generate_tweets_cloud(words, user_id=user_id, **params)
                 store_last_seen_tweet_id(mention.id)
                 reply_with_tweetcloud(tweet_id, user_id, 
-                                        user_screen_name=screen_name, 
+                                        user_screen_name=screen_name,
+                                        username=username,
                                         cloud_mode= params['mode'])
                 update_validation_data(user_id)
                 logging.info(f"User {username} has been replied.")
