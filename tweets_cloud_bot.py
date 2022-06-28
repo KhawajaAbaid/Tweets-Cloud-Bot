@@ -1,4 +1,4 @@
-"""tweets_cloud.py: Generates a word cloud from a list of tweets."""
+"""tweets_cloud_bot.py: Generates a word cloud from a list of tweets and handles all bot stuff"""
 
 from psutil import users
 from wordcloud import WordCloud, ImageColorGenerator
@@ -307,7 +307,7 @@ if __name__=="__main__":
 
     logging.basicConfig(filename="logs/tweets_cloud.log", level=logging.INFO,
                                 format='%(asctime)s - %(levelname)s - %(message)s')
-    logging.info("Starting tweets_cloud.py")
+    logging.info("Starting tweets_cloud_bot.py")
 
     # Base path
     BASE_PATH = pathlib.Path.cwd()
