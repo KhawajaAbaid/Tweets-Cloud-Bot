@@ -71,6 +71,8 @@ def store_last_seen_tweet_id(last_seen_tweet_id:int):
         f.write(str(last_seen_tweet_id))
     return
 
+
+
 def get_mentions():
     """Gets the mentions of the bot.
     Returns:
