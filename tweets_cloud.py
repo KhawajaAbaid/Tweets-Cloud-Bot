@@ -18,6 +18,7 @@ import configparser
 import configparser
 from collections import Counter
 import logging
+import json
 
 
 logging.basicConfig(filename="logs/tweets_cloud.log", level=logging.INFO,
@@ -71,7 +72,23 @@ def store_last_seen_tweet_id(last_seen_tweet_id:int):
         f.write(str(last_seen_tweet_id))
     return
 
-
+def validate_user(user_id:str):
+    """Validates a user id.
+    Args:
+        user_id: The id of the user to validate.
+    Returns:
+        True if the user is valid, False otherwise.
+        By valid we mean user has not made more than 5 requests in a day.
+        If they have, they will be put limit reached json file.
+    """
+    logging.info("Validating user")
+    with open("validation_data/users_data.json", "r") as f:
+        users_data = json.loads(f.read())
+    user_requests = users_data[str(user_id)]['requests']
+    if user_requests >=5:
+        return False
+    else:
+        return True
 
 def get_mentions():
     """Gets the mentions of the bot.
@@ -177,7 +194,7 @@ def generate_tweets_cloud(
     plt.savefig("tmp/tweetscloud_sketch.png", dpi=300, bbox_inches="tight")
 
 
-def reply(tweet_id:str, user_id:str):
+def reply_with_tweetcloud(tweet_id:str, user_id:str):
     """Replies to a tweet.
     Args:
         tweet_id: The id of the tweet to reply to.
@@ -186,6 +203,21 @@ def reply(tweet_id:str, user_id:str):
     tweet_cloud_img = f"tmp/tweet_cloud_{user_id}"
     api_v2.create_tweet()
     return
+
+def reply_with_limit_reached(tweet_id:str, user_screen_name:str):
+    """Replies to a tweet.
+    Args:
+        tweet_id: The id of the tweet to reply to.
+        user_screen_name: The screen name of the user.
+
+    """
+    logging.info("Replying with limit reached message")
+    reply_text = f"Hi {user_screen_name}, I'm sorry, but you've reached your daily limit of \
+                    limited to 5 requests per day." \
+                    "Please try again tomorrow."
+    api_v2.create_tweet(tweet_id=tweet_id, text=reply_text)
+    return
+
 
 def bot_handler():
     """Handles the bot.
@@ -200,6 +232,9 @@ def bot_handler():
             for mention, mention_num in enumerate(reversed(mentions), start=1):
                 tweet_id = mention.id
                 user_id = mention.author_id
+                if not validate_user(user_id):
+                    repl
+
                 # We use negative index here since we reversed the mentions list
                 username = users_metadata[-mention_num].username
                 tweets = fetch_tweets(user_id)
