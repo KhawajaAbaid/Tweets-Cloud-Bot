@@ -60,7 +60,7 @@ def get_last_seen_tweet_id():
     """Gets the last seen tweet id."""
     
     logging.info("Retrieing last seen tweet ID")
-    with open("last_seen_tweet_id.txt", "r") as f:
+    with open("validation_data/last_seen_tweet_id.txt", "r") as f:
         return int(f.read().strip())
 
 def store_last_seen_tweet_id(last_seen_tweet_id:int):
