@@ -202,15 +202,22 @@ def generate_tweets_cloud(
     plt.savefig(f"tmp/tweetscloud_{mode}_{user_id}.png", dpi=300, bbox_inches="tight")
 
 
-def reply_with_tweetcloud(tweet_id:str, user_id:str):
+def reply_with_tweetcloud(tweet_id:str, user_id:str=None,
+                            user_screen_name:str="Human",
+                            cloud_mode:str="default"):
     """Replies to a tweet.
     Args:
         tweet_id: The id of the tweet to reply to.
     """
-    reply_text = "Hi, here's your requested Tweet Cloud!"
-    tweet_cloud_img = f"tmp/tweet_cloud_{user_id}"
-    api_v2.create_tweet()
-    return
+    reply_text = f"Hi {user_screen_name}, here's your requested Tweet Cloud! ☁️"
+    tweet_cloud_img = f"tmp/tweetcloud_{cloud_mode}_{user_id}.png"
+    # note the use of api_v1 to upload media since v2 doesn't support media upload
+    # as of now
+    media = api_v1.upload_media(tweet_cloud_img)
+    # now we tweet using api_v2, though we cloud with v1 as well.
+    api_v2.create_tweet(text=reply_text,
+                        media_ids=[media.media_id],
+                        in_reply_to_status_id=tweet_id)
 
 def reply_with_limit_reached(tweet_id:str, user_screen_name:str):
     """Replies to a tweet.
@@ -253,6 +260,9 @@ def bot_handler():
                 # Otherwise we fetch tweets and proceed with business as usual
                 tweets = fetch_tweets(user_id)
                 words = preprocess_and_tokenize_tweets(tweets)
-                generate_tweets_cloud(words, mode="sketch", user_id=user_id)
+                generate_tweets_cloud(words, mode="sktech", user_id=user_id)
                 store_last_seen_tweet_id(mention.id)
+                reply_with_tweetcloud(tweet_id, user_id, 
+                                        user_screen_name=screen_name, 
+                                        cloud_mode= cloud_mode)
         time.sleep(30)
