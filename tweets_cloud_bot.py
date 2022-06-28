@@ -24,7 +24,6 @@ def get_last_seen_tweet_id():
     with open("validation_data/last_seen_tweet_id.txt", "r") as f:
         last_seen_id = int(f.read().strip())
         logging.info(f"last seen id: {last_seen_id}")
-        print(last_seen_id)
         return last_seen_id
 
 def store_last_seen_tweet_id(last_seen_tweet_id:int):
@@ -259,10 +258,9 @@ def bot_handler():
     """Handles the bot.
     """
     while True:
-        print("in an infinite loop")
         mentions, users_metadata = get_mentions()
         if len(mentions) > 0:
-            print("Oh hey we got new mentions")
+            logging.log("Got new mentions")
             # We reverse the mentions the reply to the early ones first
             # And we enumerate the mentions to get the index to retrieve
             # username from meta data since both lists have one to one
@@ -298,13 +296,11 @@ def bot_handler():
                                         user_screen_name=screen_name, 
                                         cloud_mode= params['mode'])
                 update_validation_data(user_id)
-                print("replied")
-        print("no mentions, going to sleep for 30s")
+                logging.info(f"User {username} has been replied.")
+        logging.info("No mentions, going to sleep for the next 30 seconds.")
         time.sleep(5)
 
 if __name__=="__main__":
-    print("Starting...")
-
     logging.basicConfig(filename="logs/tweets_cloud.log", level=logging.INFO,
                                 format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info("Starting tweets_cloud_bot.py")
@@ -316,15 +312,13 @@ if __name__=="__main__":
     # Let's define our stop words here
     # If you're not familiar with stop words, they are the most commonly ccuring
     # words in texts, like the, a, and, of, etc.
-    print("getting stop words")
     stop_words = nltk.corpus.stopwords.words('english')
     stop_words.extend(list(string.punctuation))
-    print("gottem")
     # Let's get out twitter API up and running
     # Note that I'm importing my twitter API credentials from a config file
     # Obviously the conifg file isn't in the repo, so to make this script work
     # you'll need to provide your own credentials.
-    print("setting up apis")
+    logging.info("Initiatign Authentication Process.")
     config = configparser.ConfigParser()
     config.read("classified_configs.ini")
     config['twitter-app-data']['bearer']
@@ -342,6 +336,6 @@ if __name__=="__main__":
     auth_v1 = tweepy.OAuthHandler(consumer_key, consumer_secret,
                                     access_token, access_secret)
     api_v1 = tweepy.API(auth=auth_v1)
-    print("gottem")
+    logging.info("Authentication Completed.")
 
     bot_handler()
