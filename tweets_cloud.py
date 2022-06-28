@@ -142,14 +142,14 @@ def generate_tweets_cloud(
     mode:str='default',
     border:bool=True,
     background_color:str='black',
-    user_id:str='123'):
+    user_id:str=None):
     """Generates a tweets cloud from a list of words extracted from tweets.
     Args:
         words: A list of words to generate a tweet cloud from.
         mode: The mode of the tweet cloud. Like one like Spotitfy Wrapped,
         which is default or a skech book one, specified by passing "sketch"
         border: Whether or not to include a border.
-        background_color: The background color of the tweet cloud.
+        background_color: The background color of the tweet cloud, white or black.
         user_id: The id of the user, used for the filename of the tweet cloud.
     Returns:
         A tweets cloud.
@@ -172,9 +172,10 @@ def generate_tweets_cloud(
     if mode=="default":
         wordcloud_generator = WordCloud(background_color=background_color,
                                         mask=mask,
-                                        width=1200, 
-                                        height=1200,
+                                        width=1500, 
+                                        height=1500,
                                         color_func=gradient)
+        border = np.array(Image.open(BASE_PATH / "data/twitter_border_default.png"))
     elif mode=="sketch":
         font_path = BASE_PATH / "fonts/CabinSketch-Bold.ttf"
         wordcloud_generator = WordCloud(background_color=background_color, 
@@ -182,18 +183,23 @@ def generate_tweets_cloud(
                                         width=1200,
                                         height=1200,
                                         font_path=font_path.as_posix())
+        border = np.array(Image.open(BASE_PATH / "data/twitter_border_sketch.png"))
     
     tweets_cloud = wordcloud_generator.generate_from_frequencies(freq) 
 
-    plt.figure(figsize=(4,4))
+    plt.figure(figsize=(5,5))
     plt.imshow(tweets_cloud, interpolation='bilinear')
     
     if border:
         plt.imshow(border)
     
     plt.axis("off")
-    plt.text(630, 1150, "Generated with ❤️ by @TweetsCloudBot", fontsize=5, color="white")
-    plt.savefig("tmp/tweetscloud_sketch.png", dpi=300, bbox_inches="tight")
+    if background_color == "black":
+        text_color = "white"
+    else:
+        text_color = "black"
+    plt.text(630, 1150, "Generated with ❤️ by @TweetsCloudBot", fontsize=5, color=text_color)
+    plt.savefig(f"tmp/tweetscloud_{mode}_{user_id}.png", dpi=300, bbox_inches="tight")
 
 
 def reply_with_tweetcloud(tweet_id:str, user_id:str):
