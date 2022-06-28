@@ -1,18 +1,14 @@
 """tweets_cloud.py: Generates a word cloud from a list of tweets."""
 
-from turtle import back
-import pandas as pd
 from wordcloud import WordCloud, ImageColorGenerator
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-import os
 import pathlib
 import time
 import datetime
 import string
 import nltk
-from pytwitter import Api
 import tweepy
 import configparser
 import configparser
