@@ -13,10 +13,16 @@ import datetime
 import string
 import nltk
 from pytwitter import Api
+import tweepy
 import configparser
 import configparser
 from collections import Counter
+import logging
 
+
+logging.basicConfig(filename="logs/tweets_cloud.log", level=logging.INFO,
+                            format='%(asctime)s - %(levelname)s - %(message)s')
+logging.info("Starting tweets_cloud.py")
 
 # Base path
 BASE_PATH = pathlib.Path.cwd()
@@ -40,17 +46,26 @@ consumer_secret = config['twitter-app-data']['consumer_secret']
 access_token = config['twitter-bot-data']['access_token']
 access_secret = config['twitter-bot-data']['access_token_secret']
 
-api = Api(consumer_key, consumer_secret, access_token, access_secret)
+api_v2 = tweepy.Client(consumer_key, consumer_secret, access_token, access_secret)
+
+# We need API v1 to upload media since twitter's api v2 doesn't
+# support uploading media yet.
+auth_v1 = tweepy.OAuthHandler(consumer_key, consumer_secret,
+                                access_token, access_secret)
+api_v1 = tweepy.API(auth=auth_v1)
+
 
 def get_last_seen_tweet_id():
     """Gets the last seen tweet id."""
     
+    logging.info("Retrieing last seen tweet ID")
     with open("last_seen_tweet_id.txt", "r") as f:
         return int(f.read().strip())
 
 def store_last_seen_tweet_id(last_seen_tweet_id:int):
     """Stores the last seen tweet id in a file.
     """
+    logging.info("Storing last seen tweet ID")
     last_seen_tweet_id = last_seen_tweet_id
     with open("last_seen_tweet_id.txt", "w") as f:
         f.write(str(last_seen_tweet_id))
@@ -59,23 +74,28 @@ def store_last_seen_tweet_id(last_seen_tweet_id:int):
 def get_mentions():
     """Gets the mentions of the bot.
     Returns:
-        A list of mentions.
+        A list of mentions, along with meta data about users.
     """
+    logging.info("Retrieving mentions")
     last_seen_tweet_id = get_last_seen_tweet_id()
+    # the twitter id of the TweetsCloudBot
     bot_id = "1541369501333209094"
-    mentions = api.get_mentions(user_id=bot_id, since_id=last_seen_tweet_id)
+    mentions = api_v2.get_users_mentions(user_id=bot_id, since_id=last_seen_tweet_id,
+                                    expansions="author_id", user_fields=["username"])
     mentions = mentions.data
-    return mentions
+    users_metadata = mentions.includes["users"]
+    return mentions, users_metadata
 
-def fetch_tweets(username:str):
+def fetch_tweets(user_id:str):
     """Fetches tweets from a given username.
     Args:
-        username: The username of the user to fetch tweets from.
+        user_id: The id of of the user to fetch tweets from.
     Returns:
         A list of tweets.
     """
-    user = api.get_user(username)
-    tweets = api.get_timelines(user_id=user.data.id, max_results=100)
+    logging.info("Fetching tweets")
+    # user = api_v2.get_user(username)
+    tweets = api_v2.get_users_tweets(user_id=user.data.id, max_results=100)
     tweets = tweets.data
     return tweets
 
@@ -100,7 +120,8 @@ def generate_tweets_cloud(
     words:list,
     mode:str='default',
     border:bool=True,
-    background_color:str='black'):
+    background_color:str='black',
+    user_id:str='123'):
     """Generates a tweets cloud from a list of words extracted from tweets.
     Args:
         words: A list of words to generate a tweet cloud from.
@@ -108,20 +129,22 @@ def generate_tweets_cloud(
         which is default or a skech book one, specified by passing "sketch"
         border: Whether or not to include a border.
         background_color: The background color of the tweet cloud.
+        user_id: The id of the user, used for the filename of the tweet cloud.
     Returns:
         A tweets cloud.
     """
+    # A note on privacy: The sole purpose of using user_id in filename is to
+    # 1. Uniquely save and retrieve the word cloud image
+    # 2. To prevent the word cloud image from being shared with others
+    # 3. In case we're under multiple requests, we don't wanna overwrite the file
+    # while we're uploading it. Like we may encounter an error while uploading
+    # and we want to retry but our file has already been overwritten by the script.
+    # Hope it makes sense. All the generated images will be deleted after some time.
 
     mask = np.array(Image.open(BASE_PATH / "data/twitter_mask.png"))
     gradient = ImageColorGenerator(np.array(Image.open(BASE_PATH / "data/twitter_gradient.png")))
     freq = Counter(words)
 
-    # generates a random integer which we use when saving the word cloud
-    # we're not using one static name like tmp.png because in case we're
-    # under multiple requests, we don't wanna overwrite the file as this
-    # script is concened with generating word cloud but another script is
-    # concerned with handling bot stuff like uploading.
-    img_id = np.random.randint(0, 100)
 
     background_color = background_color
 
@@ -152,20 +175,33 @@ def generate_tweets_cloud(
     plt.savefig("tmp/tweetscloud_sketch.png", dpi=300, bbox_inches="tight")
 
 
+def reply(tweet_id:str, user_id:str):
+    """Replies to a tweet.
+    Args:
+        tweet_id: The id of the tweet to reply to.
+    """
+    reply_text = "Hi, here's your requested Tweet Cloud!"
+    tweet_cloud_img = f"tmp/tweet_cloud_{user_id}"
+    api_v2.create_tweet()
+    return
 
 def bot_handler():
     """Handles the bot.
     """
     while True:
-        mentions = get_mentions()
+        mentions, users_metadata = get_mentions()
         if len(mentions) > 0:
-            for mention in mentions:
+            # We reverse the mentions the reply to the early ones first
+            # And we enumerate the mentions to get the index to retrieve
+            # username from meta data since both lists have one to one
+            # correspondence
+            for mention, mention_num in enumerate(reversed(mentions), start=1):
                 tweet_id = mention.id
-                user_id = api.get_twee
-                tweets = fetch_tweets(username)
+                user_id = mention.author_id
+                # We use negative index here since we reversed the mentions list
+                username = users_metadata[-mention_num].username
+                tweets = fetch_tweets(user_id)
                 words = preprocess_and_tokenize_tweets(tweets)
-                generate_tweets_cloud(words, mode="sketch")
-                api.upload_media(BASE_PATH / "tmp/tweetscloud_sketch.png")
-                api.update_status(f"@{username}", media_ids=[api.media_id])
+                generate_tweets_cloud(words, mode="sketch", user_id=user_id)
                 store_last_seen_tweet_id(mention.id)
         time.sleep(30)
