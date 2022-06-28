@@ -1,5 +1,6 @@
 """tweets_cloud.py: Generates a word cloud from a list of tweets."""
 
+from psutil import users
 from wordcloud import WordCloud, ImageColorGenerator
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +32,7 @@ def store_last_seen_tweet_id(last_seen_tweet_id:int):
     """
     logging.info("Storing last seen tweet ID")
     last_seen_tweet_id = last_seen_tweet_id
-    with open("last_seen_tweet_id.txt", "w") as f:
+    with open("validation_data/last_seen_tweet_id.txt", "w") as f:
         f.write(str(last_seen_tweet_id))
     return
 
@@ -47,7 +48,12 @@ def validate_user(user_id:str):
     logging.info("Validating user")
     with open("validation_data/users_data.json", "r") as f:
         users_data = json.loads(f.read())
-    user_requests = users_data[str(user_id)]['requests']
+    if user_id in users_data.keys():
+        user_requests = users_data[str(user_id)]['requests']
+    # if users record doesnt exist yet then the user has made no requests
+    # hence they are valid. As for creating record we do so with update validation data method
+    else:
+        return True
     if user_requests >=5:
         return False
     else:
@@ -61,7 +67,11 @@ def update_validation_data(user_id:str):
     logging.info("Updating validation data")
     with open("validation_data/users_data.json", "r") as f:
         users_data = json.loads(f.read())
-    users_data[str(user_id)]['requests'] += 1
+    if str(user_id) in users_data.keys():
+        users_data[str(user_id)]['requests'] += 1
+    else:
+        new_user_data = {f"{user_id}": {'requests': 1}}
+        users_data = {**users_data, **new_user_data}
     with open("validation_data/users_data.json", "w") as f:
         f.write(json.dumps(users_data))
     return
@@ -94,7 +104,7 @@ def fetch_tweets(user_id:str):
     """
     logging.info("Fetching tweets")
     # user = api_v2.get_user(username)
-    tweets = api_v2.get_users_tweets(user_id=user_id, max_results=100)
+    tweets = api_v2.get_users_tweets(id=user_id, max_results=10)
     tweets = tweets.data
     return tweets
 
@@ -143,7 +153,7 @@ def generate_tweets_cloud(
     # Hope it makes sense. All the generated images will be deleted after some time.
 
     mask = np.array(Image.open(BASE_PATH / "data/twitter_mask.png"))
-    gradient = ImageColorGenerator(np.array(Image.open(BASE_PATH / "data/twitter_gradient.png")))
+    gradient = ImageColorGenerator(np.array(Image.open(BASE_PATH / "data/twitter_gradient_default.png")))
     freq = Counter(words)
 
 
@@ -155,7 +165,7 @@ def generate_tweets_cloud(
                                         width=1500, 
                                         height=1500,
                                         color_func=gradient)
-        border = np.array(Image.open(BASE_PATH / "data/twitter_border_default.png"))
+        border_img = np.array(Image.open(BASE_PATH / "data/twitter_border_default.png"))
     elif mode=="sketch":
         font_path = BASE_PATH / "fonts/CabinSketch-Bold.ttf"
         wordcloud_generator = WordCloud(background_color=background_color, 
@@ -163,7 +173,7 @@ def generate_tweets_cloud(
                                         width=1200,
                                         height=1200,
                                         font_path=font_path.as_posix())
-        border = np.array(Image.open(BASE_PATH / "data/twitter_border_sketch.png"))
+        border_img = np.array(Image.open(BASE_PATH / "data/twitter_border_sketch.png"))
     
     tweets_cloud = wordcloud_generator.generate_from_frequencies(freq) 
 
@@ -171,7 +181,7 @@ def generate_tweets_cloud(
     plt.imshow(tweets_cloud, interpolation='bilinear')
     
     if border:
-        plt.imshow(border)
+        plt.imshow(border_img)
     
     plt.axis("off")
     if background_color == "black":
@@ -190,14 +200,14 @@ def reply_with_tweetcloud(tweet_id:str, user_id:str=None,
         tweet_id: The id of the tweet to reply to.
     """
     reply_text = f"Hi {user_screen_name}, here's your requested Tweet Cloud! ☁️"
-    tweet_cloud_img = f"tmp/tweetcloud_{cloud_mode}_{user_id}.png"
+    tweet_cloud_img = f"tmp/tweetscloud_{cloud_mode}_{user_id}.png"
     # note the use of api_v1 to upload media since v2 doesn't support media upload
     # as of now
-    media = api_v1.upload_media(tweet_cloud_img)
+    media = api_v1.media_upload(tweet_cloud_img)
     # now we tweet using api_v2, though we cloud with v1 as well.
     api_v2.create_tweet(text=reply_text,
                         media_ids=[media.media_id],
-                        in_reply_to_status_id=tweet_id)
+                        in_reply_to_tweet_id=tweet_id)
 
 def reply_with_limit_reached(tweet_id:str, user_screen_name:str):
     """Replies to a tweet.
@@ -223,6 +233,8 @@ def get_params_from_tweet(tweet_text:str):
     logging.info("Extracting parameters from tweet")
     params = {}
     tweet_text = tweet_text.lower()
+    params["mode"] = "default"
+    mode="default"
     if "mode" in tweet_text:
         mode = tweet_text.split("mode")[1].split(" ")[0]
         if mode in ["default", "sketch"]:
@@ -240,10 +252,12 @@ def get_params_from_tweet(tweet_text:str):
 
     if "border" in tweet_text:
         border = tweet_text.split("border")[1].split(" ")[0]
-        if border in ["true", "false"]:
-            params["border"] = border
+        if border == "none":
+            params["border"] = False
+        else:
+            params["border"] = True
     else:
-        params["border"] = "True"
+        params["border"] = True
     return params
 # btw about 95% of the above function including logic was written by Github Copilot
 
@@ -260,12 +274,22 @@ def bot_handler():
             # And we enumerate the mentions to get the index to retrieve
             # username from meta data since both lists have one to one
             # correspondence
+            # We use reverse user_metadeta here since we reverse the mentions list
+            users_metadata = list(reversed(users_metadata))
             for mention_num, mention in enumerate(reversed(mentions), start=1):
                 tweet_id = mention.id
                 user_id = mention.author_id
-                # We use negative index here since we reversed the mentions list
-                username = users_metadata[-mention_num].username
-                screen_name = users_metadata[-mention_num].name
+
+                if mention_num > 1 and user_id == users_metadata[mention_num-2].id:
+                    # if the same user mentions the bot multiple times consecutively
+                    # the meta data only contains one entry for the user while mentions
+                    # contains all instances of mentions, hence the one to one correspondence
+                    # b/w the two lists breaks. So we check if user_id is the same as previous mention
+                    # if so we pass keep the same credentials otherwise we update them
+                    pass
+                else:
+                    username = users_metadata[mention_num-1].username
+                    screen_name = users_metadata[mention_num-1].name
                 # if user has reached their daily limit, reply with appropriate
                 # message and move on to the next one
                 if not validate_user(user_id):
