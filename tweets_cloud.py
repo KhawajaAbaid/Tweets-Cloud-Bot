@@ -233,6 +233,40 @@ def reply_with_limit_reached(tweet_id:str, user_screen_name:str):
     api_v2.create_tweet(tweet_id=tweet_id, text=reply_text)
     return
 
+def get_params_from_tweet(tweet_text:str):
+    """Extracts parameters from a tweet.
+    Args:
+        tweet_text: The text of the tweet.
+    Returns:
+        A dictionary of parameters.
+    """
+    logging.info("Extracting parameters from tweet")
+    params = {}
+    tweet_text = tweet_text.lower()
+    if "mode" in tweet_text:
+        mode = tweet_text.split("mode")[1].split(" ")[0]
+        if mode in ["default", "sketch"]:
+            params["mode"] = mode
+    
+    if "background" in tweet_text:
+        background_color = tweet_text.split("background")[1].split(" ")[0]
+        if background_color in ["white", "black"]:
+            params["background_color"] = background_color
+    else:
+        if mode=="default":
+            params["background_color"] = "black"
+        elif mode=="sketch":
+            params["background_color"] = "white"
+
+    if "border" in tweet_text:
+        border = tweet_text.split("border")[1].split(" ")[0]
+        if border in ["true", "false"]:
+            params["border"] = border
+    else:
+        params["border"] = "True"
+    return params
+# btw about 95% of the above function including logic was written by Github Copilot
+
 
 def bot_handler():
     """Handles the bot.
@@ -250,19 +284,18 @@ def bot_handler():
                 # We use negative index here since we reversed the mentions list
                 username = users_metadata[-mention_num].username
                 screen_name = users_metadata[-mention_num].name
-
                 # if user has reached their daily limit, reply with appropriate
                 # message and move on to the next one
                 if not validate_user(user_id):
                     reply_with_limit_reached(tweet_id, screen_name)
                     continue
-
                 # Otherwise we fetch tweets and proceed with business as usual
                 tweets = fetch_tweets(user_id)
                 words = preprocess_and_tokenize_tweets(tweets)
-                generate_tweets_cloud(words, mode="sktech", user_id=user_id)
+                params = get_params_from_tweet(mention.text)
+                generate_tweets_cloud(words, user_id=user_id, **params)
                 store_last_seen_tweet_id(mention.id)
                 reply_with_tweetcloud(tweet_id, user_id, 
                                         user_screen_name=screen_name, 
-                                        cloud_mode= cloud_mode)
+                                        cloud_mode= params['mode'])
         time.sleep(30)
