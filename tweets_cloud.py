@@ -114,7 +114,7 @@ def fetch_tweets(user_id:str):
     """
     logging.info("Fetching tweets")
     # user = api_v2.get_user(username)
-    tweets = api_v2.get_users_tweets(user_id=user.data.id, max_results=100)
+    tweets = api_v2.get_users_tweets(user_id=user_id, max_results=100)
     tweets = tweets.data
     return tweets
 
@@ -126,6 +126,7 @@ def preprocess_and_tokenize_tweets(tweets:list):
     Returns:
         A list of words or tokens.
     """
+    all_words = []
     for tweet in tweets:
         tweet_text = tweet.text
         words = nltk.tokenize.casual.casual_tokenize(tweet_text,
@@ -133,7 +134,8 @@ def preprocess_and_tokenize_tweets(tweets:list):
                                     reduce_len=True,
                                     strip_handles=True)
         words = [word for word in words if word not in stop_words]
-    return words
+        all_words.extend(words)
+    return all_words
 
 def generate_tweets_cloud(
     words:list,
@@ -232,11 +234,17 @@ def bot_handler():
             for mention, mention_num in enumerate(reversed(mentions), start=1):
                 tweet_id = mention.id
                 user_id = mention.author_id
-                if not validate_user(user_id):
-                    repl
-
                 # We use negative index here since we reversed the mentions list
                 username = users_metadata[-mention_num].username
+                screen_name = users_metadata[-mention_num].name
+
+                # if user has reached their daily limit, reply with appropriate
+                # message and move on to the next one
+                if not validate_user(user_id):
+                    reply_with_limit_reached(tweet_id, screen_name)
+                    continue
+
+                # Otherwise we fetch tweets and proceed with business as usual
                 tweets = fetch_tweets(user_id)
                 words = preprocess_and_tokenize_tweets(tweets)
                 generate_tweets_cloud(words, mode="sketch", user_id=user_id)
