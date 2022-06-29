@@ -22,5 +22,5 @@ Options can be specified in any order, but you have to include the phrase **make
 For example, `@TweetsCloudBot make tweets cloud black no border sketch`
 
 ## Some samples:
-![picture](https://github.com/KhawajaAbaid/Tweets-Cloud-Bot/blob/main/data/sample_default.png)
+![picture](https://github.com/KhawajaAbaid/Tweets-Cloud-Bot/blob/main/data/sample_defualt.png)
 ![picture](https://github.com/KhawajaAbaid/Tweets-Cloud-Bot/blob/main/data/sample_sketch_bold.png)
