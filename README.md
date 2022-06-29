@@ -23,4 +23,4 @@ For example, `@TweetsCloudBot make tweets cloud black no border sketch`
 
 ## Some samples:
 ![picture](https://github.com/KhawajaAbaid/Tweets-Cloud-Bot/blob/main/data/sample_defualt.png)
-![picture](https://github.com/KhawajaAbaid/Tweets-Cloud-Bot/blob/main/data/sample_sketch_bold.png)
+![picture](https://github.com/KhawajaAbaid/Tweets-Cloud-Bot/blob/main/data/sample_sketch.png)
