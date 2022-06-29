@@ -199,7 +199,7 @@ def reply_with_tweetcloud(tweet_id:str, user_id:str=None,
     Args:
         tweet_id: The id of the tweet to reply to.
     """
-    reply_text = f"Hi @{username}, here's your requested Tweets Cloud! ☁️"
+    reply_text = f"Hey @{username}, your Tweets Cloud ☁ is ready!"
     tweet_cloud_img = f"tmp/tweetscloud_{cloud_mode}_{user_id}.png"
     # note the use of api_v1 to upload media since v2 doesn't support media upload
     # as of now
@@ -288,6 +288,7 @@ def bot_handler():
                 #validate input
                 if not validate_input(mention.text):
                     store_last_seen_tweet_id(mention.id)
+                    logging.critical("Invalid Input. Moving on.")
                     continue
 
                 if mention_num > 1 and user_id == users_metadata[mention_num-2].id:
@@ -305,6 +306,7 @@ def bot_handler():
                 if not validate_user(user_id):
                     reply_with_limit_reached(tweet_id, screen_name)
                     store_last_seen_tweet_id(mention.id)
+                    logging.critical(f"{username} has reached their daily limit. Moving on.")
                     continue
                 # Otherwise we fetch tweets and proceed with business as usual
                 tweets = fetch_tweets(user_id)
