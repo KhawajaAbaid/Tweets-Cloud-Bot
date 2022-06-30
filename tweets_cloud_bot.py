@@ -1,6 +1,5 @@
 """tweets_cloud_bot.py: Generates a word cloud from a list of tweets and handles all bot stuff"""
 
-from psutil import users
 from wordcloud import WordCloud, ImageColorGenerator
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,6 +25,7 @@ def get_last_seen_tweet_id():
         logging.info(f"last seen id: {last_seen_id}")
         return last_seen_id
 
+
 def store_last_seen_tweet_id(last_seen_tweet_id:int):
     """Stores the last seen tweet id in a file.
     """
@@ -34,6 +34,7 @@ def store_last_seen_tweet_id(last_seen_tweet_id:int):
     with open("validation_data/last_seen_tweet_id.txt", "w") as f:
         f.write(str(last_seen_tweet_id))
     return
+
 
 def validate_user(user_id:str):
     """Validates a user id.
@@ -58,6 +59,7 @@ def validate_user(user_id:str):
     else:
         return True
 
+
 def update_validation_data(user_id:str):
     """Updates the validation data.
     Args:
@@ -75,6 +77,7 @@ def update_validation_data(user_id:str):
         f.write(json.dumps(users_data))
     return
 # this func above was written by Github Copilot. Good bot!
+
 
 def get_mentions():
     """Gets the mentions of the bot.
@@ -94,6 +97,7 @@ def get_mentions():
         logging.error("Couldn't retrieve mentions")
         return [], []
 
+
 def fetch_tweets(user_id:str):
     """Fetches tweets from a given username.
     Args:
@@ -106,6 +110,7 @@ def fetch_tweets(user_id:str):
     tweets = api_v2.get_users_tweets(id=user_id, max_results=100)
     tweets = tweets.data
     return tweets
+
 
 def preprocess_and_tokenize_tweets(tweets:list):
     """Preprocesses and tokenizes tweets.
@@ -125,6 +130,7 @@ def preprocess_and_tokenize_tweets(tweets:list):
         words = [word for word in words if word not in stop_words]
         all_words.extend(words)
     return all_words
+
 
 def generate_tweets_cloud(
     words:list,
@@ -208,6 +214,7 @@ def reply_with_tweetcloud(tweet_id:str, user_id:str=None,
     api_v2.create_tweet(text=reply_text,
                         media_ids=[media.media_id],
                         in_reply_to_tweet_id=tweet_id)
+
 
 def reply_with_limit_reached(tweet_id:str, user_screen_name:str):
     """Replies to a tweet.
@@ -344,12 +351,11 @@ if __name__=="__main__":
     logging.info("Initiatign Authentication Process.")
     config = configparser.ConfigParser()
     config.read("classified_configs.ini")
-    config['twitter-app-data']['bearer']
+    bearer_token = config["twitter-app-data"]["bearer"]
     consumer_key = config['twitter-app-data']['consumer_key']
     consumer_secret = config['twitter-app-data']['consumer_secret']
     access_token = config['twitter-bot-data']['access_token']
     access_secret = config['twitter-bot-data']['access_token_secret']
-    bearer_token = config["twitter-app-data"]["bearer"]
 
     api_v2 = tweepy.Client(bearer_token, consumer_key, consumer_secret,
                             access_token, access_secret)
