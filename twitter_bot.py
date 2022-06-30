@@ -1,12 +1,15 @@
-import datetime
+"""A sort of general purpose twitter bot class that handles all the basic
+functions of a twitter bot.
+It is meant to be subclassed by an other script that implements the actual
+bot specific functions."""
 
+import datetime
 import tweepy
 import logging
 import nltk
 import configparser
 import json
 import string
-import pathlib
 
 
 class TwitterBot:
