@@ -35,6 +35,9 @@ class TwitterBot:
         # words in texts, like the, a, and, of, etc.
         self.stop_words = nltk.corpus.stopwords.words('english')
         self.stop_words.extend(list(string.punctuation))
+        # almost every tweets cloud ends up having rt as one of the most frequent
+        # if not THE most frequent word so we'll add it to the stop words
+        self.stop_words.append('rt')
 
         # Let's get out twitter API up and running
         # Note that I'm importing my twitter API credentials from a config file
